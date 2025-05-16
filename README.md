@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Welcome to your Expo app 👋
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
@@ -48,3 +49,7 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+=======
+# olivesApp
+Mobile app built with React Native (Expo) to detect olive leaf diseases. This version includes image capture, local storage (SQLite), and a clean UI with NativeWind. AI model integration (TensorFlow Lite) coming soon.
+>>>>>>> 27d1212cccb87f7ea2fe5ca0bb29243014f4ab77
