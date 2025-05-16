@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "olivesapp",
+    "slug": "olivesapp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "myapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.olivesapp.mobile",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "L'application a besoin d'accéder à vos photos pour sauvegarder les analyses.",
+          "cameraPermission": "L'application a besoin d'accéder à votre caméra pour prendre des photos."
+        }
+      ]
+    ],
+    "experimental": {
+      "bridgeless": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "81b67a8c-1ad4-4423-af6f-c78069b2face"
+      }
+    },
+    "owner": "treeapp"
+  }
+}
