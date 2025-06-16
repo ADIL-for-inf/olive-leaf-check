@@ -1,5 +1,8 @@
+// AppNavigator.js
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
+import { NavigationContainer } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 // Importation des écrans
@@ -9,9 +12,40 @@ import HistoryScreen from '../app/HistoryScreen';
 import SettingsScreen from '../app/SettingsScreen';
 import AproposScreen from '../app/AproposScreen';
 
-const Tab = createBottomTabNavigator();
 
-export default function AppNavigator() {
+const Tab = createBottomTabNavigator();
+const HistoryStack = createStackNavigator();
+const RootStack = createStackNavigator();
+
+// Créez un Stack Navigator pour l'historique
+function HistoryStackScreen() {
+  return (
+    <HistoryStack.Navigator>
+      <HistoryStack.Screen 
+        name="HistoriqueMain" 
+        component={HistoryScreen} 
+        options={{ headerShown: false }} 
+      />
+      <HistoryStack.Screen 
+        name="DetectionDetails" 
+        component={DetectionDetailsScreen} 
+        options={{ 
+          title: 'Détails de détection',
+          headerStyle: {
+            backgroundColor: '#2A2D3F',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }} 
+      />
+    </HistoryStack.Navigator>
+  );
+}
+
+// Créez le Tab Navigator principal
+function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -46,7 +80,7 @@ export default function AppNavigator() {
     >
       <Tab.Screen name="Accueil" component={AccueilScreen} />
       <Tab.Screen name="Détection" component={DetectionScreen} />
-      <Tab.Screen name="Historique" component={HistoryScreen} />
+      <Tab.Screen name="Historique" component={HistoryStackScreen} />
       <Tab.Screen name="Paramètres" component={SettingsScreen} />
       <Tab.Screen name="À propos" component={AproposScreen} />
     </Tab.Navigator>

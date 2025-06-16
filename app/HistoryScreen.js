@@ -7,46 +7,104 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   RefreshControl,
-  Alert 
+  Alert,
+  ActivityIndicator,
+  SafeAreaView
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import { useAppContext } from '../context/AppContext';
+import CustomStatusBar from '../components/CustomStatusBar';
 
 const HistoryScreen = () => {
+  // Hooks et contexte
+  const { t } = useTranslation();
+  const { settings, COLORS, SHADOWS } = useAppContext();
+  const navigation = useNavigation();
+  
+  // États
   const [history, setHistory] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
-  const navigation = useNavigation();
+  const [loading, setLoading] = useState(true);
 
-  const COLORS = {
-    primary: '#2A2D3F',
-    secondary: '#4ECDC4',
-    danger: '#FF6B6B',
-    background: '#F8F9FA',
-    text: '#2A2D3F',
-    border: '#E0E0E0'
-  };
-
+  // Chargement initial
   useEffect(() => {
     loadHistory();
   }, []);
 
+  // Charger l'historique
   const loadHistory = async () => {
+    setRefreshing(true);
     try {
       const storedHistory = await AsyncStorage.getItem('history');
-      setHistory(storedHistory ? JSON.parse(storedHistory) : []);
+      
+      if (storedHistory) {
+        const parsedHistory = JSON.parse(storedHistory);
+        const transformedHistory = parsedHistory.map(transformHistoryItem);
+        setHistory(transformedHistory);
+      } else {
+        setHistory([]);
+      }
     } catch (error) {
-      console.error('Erreur de chargement:', error);
+      console.error('Loading error:', error);
+      Alert.alert(t('error'), t('historyLoadError'));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
+  // Transformer les items d'historique
+  const transformHistoryItem = (item) => {
+    return {
+      ...item,
+      result: {
+        maladie: item.result?.disease || item.result?.maladie,
+        probabilite: item.result?.confidence || item.result?.probabilite,
+        date: item.result?.date || item.date || new Date().toISOString(),
+        traitement: item.result?.traitement,
+        recommendations: item.result?.recommendations
+      }
+    };
+  };
+
+  // Formatage de date
+  const formatDate = (dateString) => {
+    if (!dateString) return t('unknownDate');
+    
+    try {
+      const date = new Date(dateString);
+      const localeMap = {
+        fr: 'fr-FR',
+        ar: 'ar-AR',
+        en: 'en-US'
+      };
+      const locale = localeMap[settings.language] || 'fr-FR';
+      
+      return date.toLocaleDateString(locale, {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return dateString;
+    }
+  };
+
+  // Gestion du mode édition
   const toggleEditMode = () => {
     setEditMode(!editMode);
     setSelectedIds([]);
   };
 
+  // Sélection/désélection d'item
   const toggleSelectItem = (id) => {
     setSelectedIds(prev => 
       prev.includes(id) 
@@ -55,17 +113,23 @@ const HistoryScreen = () => {
     );
   };
 
+  // Confirmation de suppression
   const confirmDelete = () => {
     Alert.alert(
-      'Confirmer la suppression',
-      'Êtes-vous sûr de vouloir supprimer les éléments sélectionnés ?',
+      t('confirmDeleteTitle'),
+      t('confirmDeleteMessage'),
       [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Supprimer', onPress: handleDelete }
+        { text: t('cancel'), style: 'cancel' },
+        { 
+          text: t('delete'), 
+          onPress: handleDelete,
+          style: 'destructive'
+        }
       ]
     );
   };
 
+  // Suppression effective
   const handleDelete = async () => {
     try {
       const updatedHistory = history.filter(item => !selectedIds.includes(item.id));
@@ -74,128 +138,205 @@ const HistoryScreen = () => {
       setEditMode(false);
       setSelectedIds([]);
     } catch (error) {
-      console.error('Erreur de suppression:', error);
+      console.error('Deletion error:', error);
+      Alert.alert(t('error'), t('historyDeleteError'));
     }
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      onPress={() => editMode ? toggleSelectItem(item.id) : navigation.navigate('DetectionDetails', item)}
-      style={styles.card}
-    >
-      {editMode && (
-        <View style={[
-          styles.checkbox,
-          selectedIds.includes(item.id) && styles.checked
-        ]}>
-          {selectedIds.includes(item.id) && (
-            <Ionicons name="checkmark" size={18} color="white" />
-          )}
-        </View>
-      )}
-      
-      <Image 
-        source={{ uri: item.imageUri }} 
-        style={styles.image}
-        resizeMode="cover"
-      />
-      
-      <View style={styles.cardContent}>
-        <Text style={styles.title}>{item.result.maladie}</Text>
-        
-        <View style={styles.detailRow}>
-          <Ionicons name="calendar" size={14} color={COLORS.text} />
-          <Text style={styles.detailText}>{item.date}</Text>
-        </View>
+  // Composant d'item d'historique
+  const HistoryItem = ({ item }) => {
+    const maladie = item.result?.maladie || item.result?.disease;
+    const probabilite = item.result?.probabilite || item.result?.confidence;
+    const itemDate = item.result?.date;
 
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>{item.result.probabilite}% de confiance</Text>
+    return (
+      <TouchableOpacity
+        onPress={() => editMode 
+          ? toggleSelectItem(item.id) 
+          : navigation.navigate('DetectionDetails', { item })
+        }
+        style={[styles.card, { 
+          backgroundColor: COLORS.cardBg, 
+          ...SHADOWS.card 
+        }]}
+      >
+        {editMode && (
+          <View style={[
+            styles.checkbox,
+            selectedIds.includes(item.id) && styles.checked,
+            { borderColor: COLORS.accentBlue }
+          ]}>
+            {selectedIds.includes(item.id) && (
+              <Ionicons name="checkmark" size={18} color="white" />
+            )}
+          </View>
+        )}
+        
+        <Image 
+          source={{ uri: item.imageUri }} 
+          style={styles.image}
+          resizeMode="cover"
+        />
+        
+        <View style={styles.cardContent}>
+          <Text style={[styles.title, { color: maladie ? COLORS.text : COLORS.danger }]}>
+            {maladie 
+              ? t(`diseases.${maladie}`, { defaultValue: maladie }) 
+              : t('unknownDisease')
+            }
+          </Text>
+          
+          <View style={styles.detailRow}>
+            <Ionicons name="calendar" size={14} color={COLORS.secondaryText} />
+            <Text style={[styles.detailText, { color: COLORS.secondaryText }]}>
+              {itemDate ? formatDate(itemDate) : t('unknownDate')}
+            </Text>
+          </View>
+
+          <View style={[
+            styles.statusBadge, 
+            { 
+              backgroundColor: probabilite 
+                ? COLORS.lightBlue 
+                : COLORS.lightYellow 
+            }]}
+          >
+            <Text style={[
+              styles.statusText, 
+              { 
+                color: probabilite 
+                  ? COLORS.accentBlue 
+                  : COLORS.accentYellow 
+              }]}
+            >
+              {probabilite 
+                ? `${probabilite}% ${t('confidence')}`
+                : t('unknownConfidence')
+              }
+            </Text>
+          </View>
         </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // Écrans d'état
+  if (loading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: COLORS.background }]}>
+        <ActivityIndicator size="large" color={COLORS.accentBlue} />
+        <Text style={[styles.loadingText, { color: COLORS.secondaryText }]}>
+          {t('loadingHistory')}
+        </Text>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: COLORS.background }]}>
+      <CustomStatusBar />
+      
+      {/* En-tête centré */}
       <View style={styles.headerContainer}>
-        <Text style={styles.header}>Historique des Analyses</Text>
-        <TouchableOpacity onPress={toggleEditMode}>
-          <Text style={styles.editButton}>
-            {editMode ? 'Annuler' : 'Modifier'}
+        <View style={styles.headerCenter}>
+          <Text style={[styles.header, { color: COLORS.text }]}>
+            {t('historyTitle')}
+          </Text>
+        </View>
+        
+        <TouchableOpacity 
+          onPress={toggleEditMode}
+          style={styles.editButton}
+        >
+          <Text style={{ color: COLORS.accentBlue, fontWeight: '500' }}>
+            {editMode ? t('cancel') : t('edit')}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {editMode && selectedIds.length > 0 && (
-        <TouchableOpacity 
-          style={styles.deleteButton} 
-          onPress={confirmDelete}
-        >
-          <Ionicons name="trash" size={24} color="white" />
-          <Text style={styles.deleteText}>Supprimer ({selectedIds.length})</Text>
-        </TouchableOpacity>
-      )}
-
+      {/* Liste principale */}
       <FlatList
         data={history}
         keyExtractor={(item) => item.id.toString()}
-        renderItem={renderItem}
+        renderItem={({ item }) => <HistoryItem item={item} />}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={loadHistory}
-            colors={[COLORS.secondary]}
+            colors={[COLORS.accentBlue]}
+            tintColor={COLORS.accentBlue}
           />
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="leaf-outline" size={48} color={COLORS.secondary} />
-            <Text style={styles.emptyText}>Aucune analyse disponible</Text>
+            <Ionicons name="leaf-outline" size={48} color={COLORS.accentBlue} />
+            <Text style={[styles.emptyText, { color: COLORS.secondaryText }]}>
+              {t('noHistory')}
+            </Text>
+            <Text style={[styles.emptySubtext, { color: COLORS.secondaryText }]}>
+              {t('historyEmptySubtext')}
+            </Text>
           </View>
         }
       />
-    </View>
+
+      {/* Bouton de suppression flottant */}
+      {editMode && selectedIds.length > 0 && (
+        <View style={styles.deleteContainer}>
+          <TouchableOpacity 
+            style={[styles.deleteButton, { backgroundColor: COLORS.danger }]} 
+            onPress={confirmDelete}
+          >
+            <Ionicons name="trash" size={24} color="white" />
+            <Text style={styles.deleteText}>
+              {t('delete')} ({selectedIds.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </SafeAreaView>
   );
 };
 
+// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
     paddingHorizontal: 16
   },
   headerContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 20
+    marginVertical: 20,
+    position: 'relative'
+  },
+  headerCenter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: -1
   },
   header: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#2A2D3F'
+    textAlign: 'center'
   },
   editButton: {
-    color: '#4ECDC4',
-    fontSize: 16,
-    fontWeight: '500'
+    marginLeft: 'auto'
   },
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3
+    overflow: 'hidden',
+    position: 'relative'
   },
   image: {
     width: '100%',
     height: 180,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12
   },
   cardContent: {
     padding: 16
@@ -203,7 +344,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2A2D3F',
     marginBottom: 8
   },
   detailRow: {
@@ -213,18 +353,15 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: '#6C757D',
     marginLeft: 8
   },
   statusBadge: {
-    backgroundColor: '#E3F2FD',
     paddingVertical: 4,
     paddingHorizontal: 12,
     borderRadius: 20,
     alignSelf: 'flex-start'
   },
   statusText: {
-    color: '#2196F3',
     fontSize: 12,
     fontWeight: '500'
   },
@@ -237,7 +374,6 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#4ECDC4',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'transparent'
@@ -246,19 +382,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#4ECDC4',
     borderColor: '#4ECDC4'
   },
+  deleteContainer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   deleteButton: {
     flexDirection: 'row',
-    backgroundColor: '#FF6B6B',
-    padding: 12,
-    borderRadius: 8,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16
+    elevation: 5
   },
   deleteText: {
     color: 'white',
     marginLeft: 8,
-    fontWeight: '500'
+    fontWeight: '500',
+    fontSize: 16
   },
   emptyState: {
     flex: 1,
@@ -269,9 +414,26 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#6C757D',
     marginTop: 16,
+    textAlign: 'center',
+    fontWeight: '500'
+  },
+  emptySubtext: {
+    fontSize: 14,
+    marginTop: 8,
     textAlign: 'center'
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  loadingText: {
+    marginTop: 20,
+    fontSize: 16
+  },
+  listContent: {
+    paddingBottom: 20
   }
 });
 

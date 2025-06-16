@@ -1,18 +1,21 @@
-import 'react-native-gesture-handler'; // Important pour la gestion des gestes de navigation
+
+// App.js
+import 'react-native-gesture-handler';
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { AppContextProvider } from './context/AppContext'; // Chemin d'import correct
 
-// Importation des écrans depuis le dossier app
-import AproposScreen from './app/index';
+// Importation des écrans
+import AccueilScreen from './app/AccueilScreen';
 import DetectionScreen from './app/DetectionScreen';
 import HistoryScreen from './app/HistoryScreen';
 import SettingsScreen from './app/SettingsScreen';
-import AccueilScreen from './app/index';
+import AproposScreen from './app/AproposScreen';
 
-
-const Stack = createNativeStackNavigator();
+const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function TabNavigator() {
@@ -21,14 +24,26 @@ function TabNavigator() {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-          if (route.name === 'Accueil') iconName = 'home';
-          else if (route.name === 'Détection') iconName = 'camera';
-          else if (route.name === 'Historique') iconName = 'time';
-          else if (route.name === 'Paramètres') iconName = 'settings';
+          
+          if (route.name === 'Accueil') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Détection') {
+            iconName = focused ? 'camera' : 'camera-outline';
+          } else if (route.name === 'Historique') {
+            iconName = focused ? 'time' : 'time-outline';
+          } else if (route.name === 'Paramètres') {
+            iconName = focused ? 'settings' : 'settings-outline';
+          }
+          
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#4ECDC4',
         tabBarInactiveTintColor: 'gray',
+        tabBarStyle: {
+          paddingBottom: 5,
+          height: 60,
+        },
+        headerShown: false,
       })}
     >
       <Tab.Screen name="Accueil" component={AccueilScreen} />
@@ -41,15 +56,25 @@ function TabNavigator() {
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen 
-          name="Main" 
-          component={TabNavigator} 
-          options={{ headerShown: false }} 
-        />
-        <Stack.Screen name="Apropos" component={AproposScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <AppContextProvider>
+      <NavigationContainer>
+        <Stack.Navigator>
+          <Stack.Screen 
+            name="Main" 
+            component={TabNavigator} 
+            options={{ headerShown: false }} 
+          />
+          <Stack.Screen 
+            name="Apropos" 
+            component={AproposScreen} 
+            options={{ 
+              title: 'À propos',
+              headerBackTitle: 'Retour',
+              headerTintColor: '#4ECDC4',
+            }} 
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </AppContextProvider>
   );
 }
