@@ -51,5 +51,25 @@ Join our community of developers creating universal apps.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 =======
 # olivesApp
-Mobile app built with React Native (Expo) to detect olive leaf diseases. This version includes image capture, local storage (SQLite), and a clean UI with NativeWind. AI model integration (TensorFlow Lite) coming soon.
+# 🫒 Olive Leaf Check
+
+**Mobile app built with React Native (Expo) to detect olive leaf diseases.**  
+This version includes image capture, local storage (SQLite), and a clean UI with NativeWind.  
+AI model integration (TensorFlow Lite) coming soon.
+
+---
+
+## 📱 Features
+
+- 📷 Capture or select leaf images
+- 🧠 AI detection (coming soon)
+- 🗃️ History of analyses (stored locally in SQLite)
+- 🎨 Clean and responsive UI (NativeWind + Tailwind CSS)
+- 🔒 Offline-first
+
+---
+
+## 📂 Project Structure
+
+
 >>>>>>> 27d1212cccb87f7ea2fe5ca0bb29243014f4ab77
